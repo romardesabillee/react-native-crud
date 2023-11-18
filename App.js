@@ -1,7 +1,6 @@
 import { SafeAreaView, Button, ScrollView, Image, Text, TextInput, StyleSheet, View, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { TabView, SceneMap } from 'react-native-tab-view';
-import { useState } from "react";
-import * as ImagePicker from 'expo-image-picker';
+import { useEffect, useState } from "react";
 
 const listS = StyleSheet.create({
   container: { padding: 10, gap: 10 },
@@ -12,7 +11,17 @@ const listS = StyleSheet.create({
 
 const ListComponent = (props) => {
   // destructure props
-  const { todos } = props;
+  const { todos, setTodos, setIndex, setUpdateIndex } = props;
+
+  function handleDelete (index) {
+    const todoLists = [...todos];
+    setTodos(todoLists.filter((todo, i) => i != index));
+  }
+
+  function handleUpdate(index){
+    setUpdateIndex(index)
+    setIndex(1);
+  }
 
   return (
     <ScrollView>
@@ -23,13 +32,13 @@ const ListComponent = (props) => {
             <View style={listS.card} key={index}>
               <View>
                 <Text style={listS.title}>{todo.title}</Text>
-                <Text style={listS.desc}>Desc: {todo.title}</Text>
+                <Text style={listS.desc}>Desc: {todo.description}</Text>
               </View>
               <View style={{ flex: 1, flexDirection: "row", gap: 10 }}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(index)}>
                   <Text style={{ color: 'red' }}>Delete</Text>
                 </TouchableOpacity>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => handleUpdate(index)}>
                   <Text style={{ color: 'blue' }}>Update</Text>
                 </TouchableOpacity>
               </View>
@@ -61,15 +70,34 @@ const styleCU = StyleSheet.create({
 })
 
 const CreateOrUpdate = (props) => {
-  const { todos, setTodos } = props;
+  const { todos, setTodos, updateIndex, setUpdateIndex } = props;
 
   const [todo, setTodo] = useState({
     title: '',
     description: '',
   });
 
+  useEffect(() => {
+    if(updateIndex >= 0){
+      setTodo({
+        title: todos[updateIndex].title,
+        description: todos[updateIndex].description,
+      });
+    }
+  }, [])
+
   function pressCreate() {
     setTodos([...todos, todo]);
+    setTodo({ title: '', description: '' });
+  }
+
+  function pressUpdate() {
+    setTodos((prev) => {
+      return prev.map((data, index) => {
+        return index == updateIndex ? todo : data;
+      })
+    });
+    setUpdateIndex(-1);
     setTodo({ title: '', description: '' });
   }
 
@@ -86,9 +114,11 @@ const CreateOrUpdate = (props) => {
         style={styleCU.input}
         placeholder="Description"/>
       <TouchableOpacity 
-        onPress={pressCreate}
+        onPress={updateIndex >= 0 ? pressUpdate : pressCreate}
         style={styleCU.button}>
-        <Text>Create</Text>
+        <Text>
+          {updateIndex >= 0 ? 'Update' : 'Create'}
+        </Text>
       </TouchableOpacity>
     </View>
   )
@@ -103,29 +133,40 @@ export default function MyTabView() {
     { key: 1, title: 'Create / Update' },
   ]);
 
+  const [updateIndex, setUpdateIndex] = useState(-1);
+
   const [todos, setTodos] = useState([
     { title: 'Todo Title 1', description: 'Todo description 1' },
     { title: 'Todo Title 2', description: 'Todo description 2' },
   ]);
 
   return (
-    <View style={style.container}>
+    <SafeAreaView style={style.container}>
       <TabView
         navigationState={{ index, routes }}
         renderScene={SceneMap({
-            0: () => <ListComponent todos={todos} />,
-            1: () => <CreateOrUpdate todos={todos} setTodos={setTodos} />,
+            0: () => 
+              <ListComponent 
+                todos={todos} 
+                setIndex={setIndex}
+                setUpdateIndex={setUpdateIndex}
+                setTodos={setTodos} />,
+            1: () => 
+              <CreateOrUpdate 
+                todos={todos} 
+                updateIndex={updateIndex}
+                setUpdateIndex={setUpdateIndex}
+                setTodos={setTodos} />,
         })}
         onIndexChange={setIndex}
         initialLayout={{ width: layout.width }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const style = StyleSheet.create({
   container: {
-    paddingTop: 40,
     flex: 1,
   }
 });
